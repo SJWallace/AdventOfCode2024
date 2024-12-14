@@ -24,7 +24,8 @@ test_string = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul
 def uncorrupt_string(string: str):
 	re_pattern = r".*?mul\((\d+),(\d+)\)"
 	matches = re.findall(re_pattern, string)
-	return sum([(int(x) * int(y)) for x, y in matches])
+	result = sum([(int(x) * int(y)) for x, y in matches])
+	return result
 
 print(uncorrupt_string(test_string))
 
@@ -34,3 +35,61 @@ with open(file, 'r') as f:
 
 result = uncorrupt_string(data)
 print(result)
+
+# --- Part Two ---
+# As you scan through the corrupted memory, you notice that some of the conditional statements are also still intact. If you handle some of the uncorrupted conditional statements in the program, you might be able to get an even more accurate result.
+#
+# There are two new instructions you'll need to handle:
+#
+# The do() instruction enables future mul instructions.
+# The don't() instruction disables future mul instructions.
+# Only the most recent do() or don't() instruction applies. At the beginning of the program, mul instructions are enabled.
+#
+# For example:
+#
+# xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))
+# This corrupted memory is similar to the example from before, but this time the mul(5,5) and mul(11,8) instructions are disabled because there is a don't() instruction before them. The other mul instructions function normally, including the one at the end that gets re-enabled by a do() instruction.
+#
+# This time, the sum of the results is 48 (2*4 + 8*5).
+#
+# Handle the new instructions; what do you get if you add up all of the results of just the enabled multiplications?
+
+test_string_2 = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
+
+def check_start(string: str):
+	# Regex pattern to match start of string with do() or don't()
+	pattern = r"^(do\(\)|don't\(\))"
+	match = re.match(pattern, string)
+	return bool(match), match.group(0) if match else None
+
+def uncorrupt_string_instructions(string: str):
+	do_sum = 0
+
+	# Track whether instructions are enabled or disabled
+	enabled = True
+
+	re_pattern = r"(do\(\)|don't\(\))|([^d]+)"
+	matches = re.findall(re_pattern, string)
+
+	for match in matches:
+		instruction = match[0]  # First group captures "do()" or "don't()"
+		chunk = match[1]  # Second group captures the string chunk
+
+		# Handle enabling/disabling instructions
+		if instruction == "do()":
+			enabled = True
+		elif instruction == "don't()":
+			enabled = False
+
+		# Only process the chunk if multiplication is enabled
+		if enabled and chunk:
+			chunk_sum = uncorrupt_string(chunk)
+			do_sum += chunk_sum
+
+	print(f"Total Sum: {do_sum}")
+	return do_sum
+
+
+print(uncorrupt_string_instructions(test_string_2))
+part2_result = uncorrupt_string_instructions(data)
+print(part2_result)
