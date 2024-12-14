@@ -58,10 +58,26 @@ def read_lists(file: str):
 	list2 = df.iloc[:, 1].to_list()
 	return list1, list2
 
+def similarity_score(list1: list, list2: list):
+	list1 = sorted(list1)
+	list2 = sorted(list2)
+
+	similarity_score = 0
+
+	for entry in list1:
+		if entry in list2:
+			similarity_score += entry * list2.count(entry)
+		else:
+			similarity_score += 0
+
+	return similarity_score
+
 def main():
 	list1, list2 = read_lists("Day1_input_lists.txt")
 	distance = list_distance(list1, list2)
 	print(f"The total distance between the left list and the right list is {distance}.")
+	sim_score = similarity_score(list1, list2)
+	print(f"The similarity score is {sim_score}.")
 
 if __name__ == "__main__":
 	main()
