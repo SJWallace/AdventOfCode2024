@@ -203,48 +203,217 @@ def main(map_input):
 	step_number = 1
 
 	while True:
-		print(f"Step {step_number}:")
-		print(f"  Guard is currently at position {current_position} facing {guard_direction}.")
+		# print(f"Step {step_number}:")
+		# print(f"  Guard is currently at position {current_position} facing {guard_direction}.")
 
 		# Process guard's movement
 		obstacle_exists, spaces_to_move, reached_edge = process_guard_movement(updated_map, current_position,
 																			   guard_direction)
 
 		if reached_edge:
-			print(f"  Guard will move {spaces_to_move} spaces until the edge of the map and then exit.")
-			current_position = update_map_with_guard_path(updated_map, current_position, spaces_to_move,
+			update_map_with_guard_path(updated_map, current_position, spaces_to_move,
 														  guard_direction)
 			break
 
-		print(f"  Guard will move {spaces_to_move} spaces before encountering an obstacle.") if obstacle_exists else \
-			print(f"  Guard will move {spaces_to_move} spaces with no obstacles in the way.")
 
 		current_position = update_map_with_guard_path(updated_map, current_position, spaces_to_move, guard_direction)
 
 		if obstacle_exists:
 			guard_direction = update_guard_direction(guard_direction)
-			print(f"  Guard encounters an obstacle and turns to face {guard_direction}.")
 
-		print("  Current map state:")
-		for row in updated_map:
-			print("".join(row))
-
-		print("\n")
+		# print("\n")
 		step_number += 1
 
 	# Print and count the final results
-	print("Final map after guard path traversal:")
-	for row in updated_map:
-		print("".join(row))
+	# print("Final map after guard path traversal:")
+	# for row in updated_map:
+	# 	print("".join(row))
 
 	count = count_visited_spaces(updated_map)
-	print(f"Total number of distinct positions visited by the guard: {count}")
-	return count
+	# print(f"Total number of distinct positions visited by the guard: {count}")
+	return count, updated_map
 
 
-print(f"Total visited spaces: {main(map_input)}")
+
 
 with open('Day6_input.txt', 'r') as f:
 	input = f.read()
 
-print(f"Total visited spaces: {main(input.splitlines(keepends=False))}")
+visisted_spaces, final_map = main(input.splitlines())
+
+# --- Part Two ---
+# While The Historians begin working around the guard's patrol route, you borrow their fancy device and step outside the lab. From the safety of a supply closet, you time travel through the last few months and record the nightly status of the lab's guard post on the walls of the closet.
+#
+# Returning after what seems like only a few seconds to The Historians, they explain that the guard's patrol area is simply too large for them to safely search the lab without getting caught.
+#
+# Fortunately, they are pretty sure that adding a single new obstruction won't cause a time paradox. They'd like to place the new obstruction in such a way that the guard will get stuck in a loop, making the rest of the lab safe to search.
+#
+# To have the lowest chance of creating a time paradox, The Historians would like to know all of the possible positions for such an obstruction. The new obstruction can't be placed at the guard's starting position - the guard is there right now and would notice.
+#
+# In the above example, there are only 6 different positions where a new obstruction would cause the guard to get stuck in a loop. The diagrams of these six situations use O to mark the new obstruction, | to show a position where the guard moves up/down, - to show a position where the guard moves left/right, and + to show a position where the guard moves both up/down and left/right.
+#
+# Option one, put a printing press next to the guard's starting position:
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ....|..#|.
+# ....|...|.
+# .#.O^---+.
+# ........#.
+# #.........
+# ......#...
+# Option two, put a stack of failed suit prototypes in the bottom right quadrant of the mapped area:
+#
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ..+-+-+#|.
+# ..|.|.|.|.
+# .#+-^-+-+.
+# ......O.#.
+# #.........
+# ......#...
+# Option three, put a crate of chimney-squeeze prototype fabric next to the standing desk in the bottom right quadrant:
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ..+-+-+#|.
+# ..|.|.|.|.
+# .#+-^-+-+.
+# .+----+O#.
+# #+----+...
+# ......#...
+# Option four, put an alchemical retroencabulator near the bottom left corner:
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ..+-+-+#|.
+# ..|.|.|.|.
+# .#+-^-+-+.
+# ..|...|.#.
+# #O+---+...
+# ......#...
+# Option five, put the alchemical retroencabulator a bit to the right instead:
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ..+-+-+#|.
+# ..|.|.|.|.
+# .#+-^-+-+.
+# ....|.|.#.
+# #..O+-+...
+# ......#...
+# Option six, put a tank of sovereign glue right next to the tank of universal solvent:
+#
+# ....#.....
+# ....+---+#
+# ....|...|.
+# ..#.|...|.
+# ..+-+-+#|.
+# ..|.|.|.|.
+# .#+-^-+-+.
+# .+----++#.
+# #+----++..
+# ......#O..
+# It doesn't really matter what you choose to use as an obstacle so long as you and The Historians can put it into position without the guard noticing. The important thing is having enough options that you can find one that minimizes time paradoxes, and in this example, there are 6 different positions you could choose.
+#
+# You need to get the guard stuck in a loop by adding a single new obstruction. How many different positions could you choose for this obstruction?
+
+def check_obstructions(map_input, guard_position, guard_direction):
+	# Set to store visited states (position and direction)
+	obstructions = set()
+
+	# Current state of the guard
+	current_position = guard_position
+	current_direction = guard_direction
+
+	while True:
+		guard_state = (current_position[0], current_position[1], current_direction)
+
+		# Check if this state has been visited before
+		if guard_state in obstructions:
+			print(f"Loop detected: guard is stuck at state {guard_state}.")
+			return True  # Loop detected
+
+		# Add the current state to obstructions
+		obstructions.add(guard_state)
+
+		# Process the guard's movement
+		obstacle_exists, spaces_to_move, reached_edge = process_guard_movement(
+			map_input, current_position, current_direction
+		)
+
+		# Update the map with the guard’s path
+		current_position = update_map_with_guard_path(
+			map_input, current_position, spaces_to_move, current_direction
+		)
+
+		# Check if the guard has exited the map
+		if reached_edge:
+			print(f"Guard has exited the map at {current_position}. No loop.")
+			return False  # No loop
+
+		# Update direction if an obstacle is encountered
+		if obstacle_exists:
+			current_direction = update_guard_direction(current_direction)
+
+def get_visited_locations(map_input):
+	visited_locations = set()  # Use a set to store unique visited positions
+
+	# Iterate through rows and columns of the map
+	for row_idx, row in enumerate(map_input):
+		for col_idx, cell in enumerate(row):
+			if cell == "X":  # Check if the cell is visited ("X")
+				visited_locations.add((row_idx, col_idx))  # Add (row_idx, col_idx) to the set
+
+	# Debug: Print visited locations
+	if len(visited_locations) == 0:
+		print("No visited locations ('X') found in the map.")
+	else:
+		print(f"Visited locations: {visited_locations}")
+
+	return visited_locations
+
+
+def check_all_obstructions(map_input, guard_position, guard_direction):
+	# Step 1: Track all visited locations
+	visited_locations = get_visited_locations(map_input)
+	print(f"Total number of visited locations: {len(visited_locations)}")
+
+	looping_positions = []  # To store locations that cause a loop
+
+	for position in visited_locations:
+		# Step 2: Modify the map to place an obstacle at the position
+		row, col = position
+		original_char = map_input[row][col]  # Save the original value
+		map_input[row][col] = '#'  # Mark as an obstacle
+
+		# Step 3: Check if the map now causes a loop
+		if check_obstructions(map_input, guard_position, guard_direction):
+			looping_positions.append(position)  # Record the position if it causes a loop
+
+		# Step 4: Restore the map
+		map_input[row][col] = original_char  # Reset the location
+
+	# Step 5: Return the looping positions
+	return looping_positions
+
+def part_2():
+	start_position, guard_direction, updated_map = read_map(input.splitlines())
+	# print(updated_map)
+	_, final_map = main(input.splitlines())
+	# print(final_map)
+	looping_positions = check_all_obstructions(final_map, start_position, guard_direction)
+	return looping_positions
+
+print(len(part_2()))
