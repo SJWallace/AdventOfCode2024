@@ -43,7 +43,7 @@ test_array = [
 	"292: 11 6 16 20"
 ]
 
-def main(data):
+def main(data, concat=False):
 	valid_test_values_sum = 0  # To keep track of the sum of valid test values
 
 	for line in data:
@@ -52,7 +52,7 @@ def main(data):
 		# print(test_value, operators)
 
 		# Generate all possible test equations from the operators
-		test_equations = generate_test_equations(operators)
+		test_equations = generate_test_equations(operators, concat=concat)
 
 		# Check if any equation evaluates to the test_value
 		test_value_valid = False
@@ -78,18 +78,14 @@ def split_test_data(data):
 
 
 def evaluate_test_equation_ltr(equation):
-	"""
-    Evaluates a mathematical equation left-to-right, ignoring operator precedence.
-
-    :param equation: A string representing the equation (e.g., "11 + 6 * 16 + 20").
-    :return: The result of the evaluation.
-    """
+	# Custom evaluation function, breaks normal math rules
 	# Split the equation into tokens (numbers and operators)
 	tokens = equation.split()
 
 	# Initialize the result with the first number
 	result = int(tokens[0])
 
+	# Apply each operator and number sequentially, left-to-right
 	for i in range(1, len(tokens), 2):
 		operator = tokens[i]
 		number = int(tokens[i + 1])
@@ -98,27 +94,34 @@ def evaluate_test_equation_ltr(equation):
 			result += number
 		elif operator == "*":
 			result *= number
+		elif operator == "||":
+			# Concatenate the digits using string conversion
+			result = int(str(result) + str(number))
 		else:
 			raise ValueError(f"Invalid operator: {operator}")
 
 	return result
 
-def generate_test_equations(operators):
-	# Base case: If only one operator, return it as the only equation
+def generate_test_equations(operators, concat=False):
+	"""
+    Generates all possible equations by placing +, *, and || between operators.
+    """
 	if len(operators) == 1:
-		return [str(operators[0])]
+		return [str(operators[0])]  # Base case: only one number
 
-	# Generate all possible sequences of + and * for (n-1) positions
-	operator_symbols = ['+', '*']
+	# Generate all possible sequences of +, *, and || for (n-1) positions
+	if concat is False:
+		operator_symbols = ['+', '*']
+	else:
+		operator_symbols = ['+', '*', '||']
+
 	symbol_combinations = list(product(operator_symbols, repeat=len(operators) - 1))
 
 	equations = []
-
-	# Create equations for each combination of symbols
 	for symbols in symbol_combinations:
-		equation = str(operators[0])
+		equation = str(operators[0])  # Start with the first number
 		for i, symbol in enumerate(symbols):
-			equation += f" {symbol} {operators[i + 1]}"
+			equation += f" {symbol} {operators[i + 1]}"  # Add operator and next number
 		equations.append(equation)
 
 	return equations
@@ -127,3 +130,21 @@ with open("Day7_input.txt", "r") as file:
 	data = file.read().splitlines()
 
 print(main(data))
+
+print(main(data, concat=True))
+
+
+# --- Part Two ---
+# The engineers seem concerned; the total calibration result you gave them is nowhere close to being within safety tolerances. Just then, you spot your mistake: some well-hidden elephants are holding a third type of operator.
+#
+# The concatenation operator (||) combines the digits from its left and right inputs into a single number. For example, 12 || 345 would become 12345. All operators are still evaluated left-to-right.
+#
+# Now, apart from the three equations that could be made true using only addition and multiplication, the above example has three more equations that can be made true by inserting operators:
+#
+# 156: 15 6 can be made true through a single concatenation: 15 || 6 = 156.
+# 7290: 6 8 6 15 can be made true using 6 * 8 || 6 * 15.
+# 192: 17 8 14 can be made true using 17 || 8 + 14.
+# Adding up all six test values (the three that could be made before using only + and * plus the new three that can now be made by also using ||) produces the new total calibration result of 11387.
+#
+# Using your new knowledge of elephant hiding spots, determine which equations could possibly be true. What is their total calibration result?
+
