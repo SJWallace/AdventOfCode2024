@@ -103,26 +103,30 @@ test_input = """47|53
 97,13,75,29,47"""
 
 def parse_input(input: str):
-	rules = []
-	updates = []
+	input_rules = []
+	input_updates = []
 	for line in input.splitlines():
 		if not line.strip():
 			continue
 		if "|" in line:
-			rules.append(line)
+			input_rules.append(line)
 		else:
-			updates.append(line)
-	return rules, updates
-
-rules, updates = parse_input(test_input)
+			input_updates.append(line)
+	return input_rules, input_updates
 
 def parse_rules(rules: list):
 	split_rules = [tuple(map(int, rule.split("|"))) for rule in rules]
-	sorted_rules = sorted(split_rules, key=lambda x: (x[0], x[1]))
-	return sorted_rules
+	return split_rules
+
+def calculate_middle_sum(updates):
+	middle_sum = 0
+	for update in updates:
+		middle_index = len(update) // 2
+		middle_sum += update[middle_index]
+	return middle_sum
 
 def parse_updates(updates, rules):
-	valid_updates =[]
+	valid_updates = []
 
 	for update in updates:
 		update_pages = list(map(int, update.split(",")))
@@ -139,18 +143,14 @@ def parse_updates(updates, rules):
 				continue
 		if is_valid:
 			valid_updates.append(update_pages)
-
-	middle_sum = 0
-	for update in valid_updates:
-		middle_index = len(update) // 2
-		middle_sum += update[middle_index]
+	middle_sum = calculate_middle_sum(valid_updates)
 
 	return middle_sum
 
 def page_sorter(input):
 	rules, updates = parse_input(input)
-	sorted_rules = parse_rules(rules)
-	middle_sum = parse_updates(updates, sorted_rules)
+	parsed_rules = parse_rules(rules)
+	middle_sum = parse_updates(updates, parsed_rules)
 	return middle_sum
 
 with open("Day5_input.txt") as file:
@@ -158,3 +158,100 @@ with open("Day5_input.txt") as file:
 
 result = page_sorter(data)
 print(result)
+
+# --- Part Two ---
+# While the Elves get to work printing the correctly-ordered updates, you have a little time to fix the rest of them.
+#
+# For each of the incorrectly-ordered updates, use the page ordering rules to put the page numbers in the right order. For the above example, here are the three incorrectly-ordered updates and their correct orderings:
+#
+# 75,97,47,61,53 becomes 97,75,47,61,53.
+# 61,13,29 becomes 61,29,13.
+# 97,13,75,29,47 becomes 97,75,47,29,13.
+# After taking only the incorrectly-ordered updates and ordering them correctly, their middle page numbers are 47, 29, and 47. Adding these together produces 123.
+#
+# Find the updates which are not in the correct order. What do you get if you add up the middle page numbers after correctly ordering just those updates?
+
+from collections import defaultdict, deque
+
+
+def topological_sort(update_pages, rules):
+	pages = set(update_pages)
+	graph = defaultdict(list)
+	in_degree = defaultdict(int)
+
+	# Build the graph and in-degree count based on the rules
+	for first_page, second_page in rules:
+		if first_page in pages and second_page in pages:
+			graph[first_page].append(second_page)
+			in_degree[second_page] += 1
+			if first_page not in in_degree:
+				in_degree[first_page] = 0
+
+	queue = deque([page for page in pages if in_degree[page] == 0])
+	sorted_pages = []
+
+	while queue:
+		current_page = queue.popleft()
+		sorted_pages.append(current_page)
+		for neighbor in graph[current_page]:
+			in_degree[neighbor] -= 1
+			if in_degree[neighbor] == 0:
+				queue.append(neighbor)
+
+	# If not all pages are sorted, there is a cycle
+	if len(sorted_pages) != len(pages):
+		raise ValueError("Cycle detected in the pages.")
+
+	return sorted_pages
+
+def identify_invalid_updates(updates, rules):
+	valid_updates = []
+	invalid_updates = []
+
+	for update in updates:
+		update_pages = list(map(int, update.split(",")))
+		is_valid = True
+		for rule in rules:
+			first_page, second_page = rule
+			if first_page in update_pages and second_page in update_pages:
+				if update_pages.index(first_page) < update_pages.index(second_page):
+					continue
+				else:
+					is_valid = False
+					break
+
+		if is_valid:
+			valid_updates.append(update_pages)
+		else:
+			invalid_updates.append(update_pages)
+
+	return valid_updates, invalid_updates
+
+
+def reorder_updates(updates, rules):
+	reordered_updates = []
+	for update in updates:
+		try:
+			reordered = topological_sort(update, rules)
+			reordered_updates.append(reordered)
+		except ValueError as e:
+			print(f"Skipping update {update}: {e}")
+			continue
+	return reordered_updates
+
+
+def main(input):
+	rules, updates = parse_input(input)
+	parsed_rules = parse_rules(rules)
+	valid_updates, invalid_updates = identify_invalid_updates(updates, parsed_rules)
+	reordered_updates = reorder_updates(invalid_updates, parsed_rules)
+	middle_sum = calculate_middle_sum(reordered_updates)
+	return middle_sum
+
+
+print(main(test_input))
+
+with open("Day5_input.txt") as file:
+	data = file.read()
+
+print(main(data))
