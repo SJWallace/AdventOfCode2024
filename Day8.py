@@ -177,6 +177,40 @@ class AsciiMap:
 
 		self.antinodes = antinodes
 
+	def locate_antinode_lines(self):
+		antinodes = set()
+
+		for key, locations in self.antennas.items():
+			# Iterate through all unique pairs of antennas
+			for (x1, y1), (x2, y2) in combinations(locations, 2):
+				# Calculate directional differences and distances
+				dx = x2 - x1
+				dy = y2 - y1
+
+				i = 0
+				while True:
+					# Compute antinodes for the current scale factor i
+					antinode1 = (x1 - i * dx, y1 - i * dy)  # Extend backward from first antenna
+					antinode2 = (x2 + i * dx, y2 + i * dy)  # Extend forward from second antenna
+
+					valid1 = self._is_within_bounds(antinode1)  # Check bounds for antinode1
+					valid2 = self._is_within_bounds(antinode2)  # Check bounds for antinode2
+
+					# Add valid antinodes to the set
+					if valid1:
+						antinodes.add(antinode1)
+					if valid2:
+						antinodes.add(antinode2)
+
+					# Stop the loop if both antinodes are out of bounds
+					if not valid1 and not valid2:
+						break
+
+					# Increment i to extend further
+					i += 1
+
+		self.antinodes = antinodes
+
 	def mark_antinodes(self):
 		for antinode in self.antinodes:
 			x, y = antinode
@@ -214,3 +248,53 @@ day8map.locate_antinode()
 day8map.mark_antinodes()
 day8map.print_antinode_map()
 day8map.antinode_count()
+
+testMap.locate_antinode_lines()
+testMap.mark_antinodes()
+testMap.print_antinode_map()
+testMap.antinode_count()
+
+day8map.locate_antinode_lines()
+day8map.mark_antinodes()
+day8map.print_antinode_map()
+day8map.antinode_count()
+
+# --- Part Two ---
+# Watching over your shoulder as you work, one of The Historians asks if you took the effects of resonant harmonics into your calculations.
+#
+# Whoops!
+#
+# After updating your model, it turns out that an antinode occurs at any grid position exactly in line with at least two antennas
+# of the same frequency, regardless of distance. This means that some of the new antinodes will occur at the position of each antenna
+# (unless that antenna is the only one of its frequency).
+#
+# So, these three T-frequency antennas now create many antinodes:
+#
+# T....#....
+# ...T......
+# .T....#...
+# .........#
+# ..#.......
+# ..........
+# ...#......
+# ..........
+# ....#.....
+# ..........
+# In fact, the three T-frequency antennas are all exactly in line with two antennas, so they are all also antinodes!
+# This brings the total number of antinodes in the above example to 9.
+#
+# The original example now has 34 antinodes, including the antinodes that appear on every antenna:
+#
+# ##....#....#
+# .#.#....0...
+# ..#.#0....#.
+# ..##...0....
+# ....0....#..
+# .#...#A....#
+# ...#..#.....
+# #....#.#....
+# ..#.....A...
+# ....#....A..
+# .#........#.
+# ...#......##
+# Calculate the impact of the signal using this updated model. How many unique locations within the bounds of the map contain an antinode?
