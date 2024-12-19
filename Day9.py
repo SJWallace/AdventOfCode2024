@@ -117,6 +117,113 @@ class DiskMap():
 			# Update leftmost_free_index to continue the iteration
 			leftmost_free_index += 1
 
+	def get_file_locations(self):
+		"""
+		Returns a dictionary where each key is the file_id and the value is a tuple
+		(start_index, end_index, length) indicating the file's location.
+		"""
+		file_locations = {}
+		current_file_id = None
+		start_index = None
+
+		# Iterate through disk blocks to find contiguous file blocks
+		for index, block in enumerate(self.blocks):
+			if block.isdigit():  # Block is part of a file
+				file_id = int(block)
+				if file_id != current_file_id:  # New file starts
+					if current_file_id is not None:  # Save the previous file's info
+						file_locations[current_file_id] = (start_index, index - 1, index - start_index)
+
+					# Start new file
+					current_file_id = file_id
+					start_index = index
+			else:  # Block is free space
+				if current_file_id is not None:  # Save the last file's info
+					file_locations[current_file_id] = (start_index, index - 1, index - start_index)
+					current_file_id = None
+
+		# Handle the last file if it ends at the last block
+		if current_file_id is not None:
+			file_locations[current_file_id] = (start_index, len(self.blocks) - 1, len(self.blocks) - start_index)
+
+		return file_locations
+
+	def get_free_space_locations(self):
+		"""
+		Returns a list of tuples, where each tuple is (start_index, end_index, length)
+		for contiguous regions of free space.
+		"""
+		free_spaces = []
+		start_index = None
+
+		# Iterate through disk blocks to find contiguous free space
+		for index, block in enumerate(self.blocks):
+			if block == '.':  # Block is free space
+				if start_index is None:  # Start of a new free space region
+					start_index = index
+			else:  # Block is part of a file
+				if start_index is not None:  # End of a free space region
+					free_spaces.append((start_index, index - 1, index - start_index))
+					start_index = None
+
+		# Handle the last free space region if it ends at the last block
+		if start_index is not None:
+			free_spaces.append((start_index, len(self.blocks) - 1, len(self.blocks) - start_index))
+
+		return free_spaces
+
+	def defrag_disk_files(self):
+		file_locations = self.get_file_locations()
+
+		# Process files in reverse order (start with the largest file_id)
+		for file_id, file_location in sorted(file_locations.items(), key=lambda x: x[0], reverse=True):
+			# self.print_disk()
+			free_space_locations = self.get_free_space_locations()
+			start_index, end_index, file_length = file_location
+
+			# Iterate through all free spaces to find a suitable location
+			for free_space_location in free_space_locations:
+				free_start, free_end, free_space_length = free_space_location
+
+				# Check if the current free space can fit the file AND moving decreases the starting index
+				if file_length <= free_space_length and free_start < start_index:
+					print(f"Moving file {file_id} from {start_index} to {free_start}")
+					self.move_file((start_index, end_index, file_length), (free_start, free_end, free_space_length))
+					break
+
+	def move_file(self, file_id, destination):
+		"""
+	    Moves a file to a new position in the disk map.
+
+	    Args:
+	        file_id (tuple): A tuple (start_index, end_index, length) representing the current file position.
+	        destination (tuple): A tuple (start_index, end_index, length) representing the destination free space.
+	    """
+		# Unpack the input tuples
+		file_start, file_end, file_length = file_id
+		dest_start, dest_end, dest_length = destination
+
+		# Ensure the destination has enough free space to fit the file
+		if file_length > dest_length:
+			raise ValueError("Destination free space is not large enough to move the file.")
+
+		# Calculate the exact range of destination indices where the file should go
+		dest_range_end = dest_start + file_length  # Destination range is inclusive of length
+
+		# Move the file blocks to the new destination
+		file_content = self.blocks[file_start:file_end + 1]  # Include the last element of the file
+		self.blocks[dest_start:dest_range_end] = file_content  # Insert into the destination
+
+		# Mark the old file location as free space ('.')
+		self.blocks[file_start:file_end + 1] = ['.'] * file_length
+
+		# Handle any remaining free space beyond what the file occupies
+		if file_length < dest_length:
+			remaining_free_space_start = dest_start + file_length
+			remaining_free_space_length = dest_length - file_length
+			self.blocks[remaining_free_space_start:dest_end + 1] = ['.'] * remaining_free_space_length
+
+
 	def calculate_checksum(self):
 		"""
 		Calculates the checksum of the disk. For each file block (non-dot value),
@@ -124,11 +231,12 @@ class DiskMap():
 		Stops summing as soon as a free space ('.') is encountered.
 		"""
 		checksum = 0
+		self.print_disk()
 
 		for index, value in enumerate(self.blocks):
 			if value == '.':  # Stop calculation if a free space is encountered
-				break
-			checksum += index * int(value)  # Convert value to int and add to checksum
+				continue
+			checksum += index * int(value)
 
 		return checksum
 
@@ -143,12 +251,12 @@ class DiskMap():
 
 test_diskmap = DiskMap("2333133121414131402")
 test_diskmap.print_disk()
-test_diskmap.defrag_disk()
+test_diskmap.defrag_disk_files()
 test_diskmap.print_disk()
 print(test_diskmap.calculate_checksum())
 
-#
+# #
 day9_diskmap = DiskMap(open('Day9_input.txt').read())
-day9_diskmap.defrag_disk()
+day9_diskmap.defrag_disk_files()
 day9_diskmap.print_disk()
 print(day9_diskmap.calculate_checksum())
